@@ -544,7 +544,25 @@ namespace MdxClient
         {
             // change type was giving odd results when a culture was passed in on the thread, for example German 5.324145E1 came out as 5324145 instead of 53.24145
             // we give it invariant culture to fix this.  It will be up to the end user to apply formatting.
+            Type resultSetType = crs.Columns[columnIndex].Type;
+            Type cellType = ConvertXmlTypeToType(cell.Type);
+
+            //when result set type is declared as decimal and double or float is returned
+            //not every xsd:double or xsd:float can be converted directly to decimal. So we convert it to double or float firstly and then to decimal
+            if (IsDecimalFixNeeded(resultSetType, cellType))
+            {
+                cell.Value = Convert.ChangeType(cell.Value, cellType, CultureInfo.InvariantCulture);
+            }
             cell.Value = Convert.ChangeType(cell.Value, crs.Columns[columnIndex].Type ?? ConvertXmlTypeToType(cell.Type), CultureInfo.InvariantCulture);            
+        }
+
+        private static bool IsDecimalFixNeeded(Type resultSetType, Type cellType)
+        {
+            if (resultSetType == typeof(decimal))
+            {
+                return cellType == typeof(double) || cellType == typeof(float);
+            }
+            return false;
         }
 
         private void AddRows(IEnumerable<Tuple> rows, List<Cell> cells, int rowColumnCount, ResultSet crs)
